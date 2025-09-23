@@ -4,7 +4,7 @@ import numpy as np
 
 
 class HeadPoseTracker:
-    def __init__(self):
+    def __init__(self, image_width=640, image_height=480):
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
             min_detection_confidence=0.5,
@@ -24,9 +24,10 @@ class HeadPoseTracker:
             [0.0, -330.0, -65.0]
         ], dtype=np.float64)
 
+        focal_length = max(image_width, image_height)
         self.camera_matrix = np.array([
-            [800, 0, 320],
-            [0, 800, 240],
+            [focal_length, 0, image_width / 2],
+            [0, focal_length, image_height / 2],
             [0, 0, 1]
         ], dtype=np.float64)
 
@@ -176,12 +177,10 @@ class HeadPoseTracker:
         results = self.face_mesh.process(rgb_image)
 
         if results.multi_face_landmarks:
-            for face_landmarks in results.multi_face_landmarks:
-                pose_data = self.calculate_head_pose(face_landmarks, image.shape)
-
-                stability_info = self.check_stability(pose_data)
-
-                self.draw_pose_info(image, stability_info)
+            primary_face = results.multi_face_landmarks[0]
+            pose_data = self.calculate_head_pose(primary_face, image.shape)
+            stability_info = self.check_stability(pose_data)
+            self.draw_pose_info(image, stability_info)
 
         else:
             cv2.putText(image, "NO FACE DETECTED - MOVE INTO FRAME", (50, 50),
@@ -191,13 +190,21 @@ class HeadPoseTracker:
 
 
 def main():
-    tracker = HeadPoseTracker()
-
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         print("Ошибка: Не удалось открыть веб-камеру")
         return
+
+    ret, frame = cap.read()
+    if not ret:
+        print("Ошибка: Не удалось получить первый кадр")
+        cap.release()
+        return
+
+    h, w = frame.shape[:2]
+
+    tracker = HeadPoseTracker(image_width=w, image_height=h)
 
     print("Запуск системы трекинга головы...")
     print("Нажмите 'q' для выхода")
@@ -209,7 +216,7 @@ def main():
 
         processed_frame = tracker.process_frame(frame)
 
-        cv2.imshow('Head Pose Tracker - Keep Head Straight', processed_frame)
+        cv2.imshow('Head Pose Tracker', processed_frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -220,4 +227,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
