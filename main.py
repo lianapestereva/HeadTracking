@@ -78,8 +78,10 @@ class HeadPoseTracker:
                 yaw = float(euler_angles[1].item()) if hasattr(euler_angles[1], 'item') else float(euler_angles[1])
                 roll = float(euler_angles[2].item()) if hasattr(euler_angles[2], 'item') else float(euler_angles[2])
 
-                if pitch>0: pitch = 180-pitch
-                else: pitch = pitch+180
+                if pitch > 0:
+                    pitch = 180 - pitch
+                else:
+                    pitch = pitch + 180
                 yaw = (yaw + 180) % 360 - 180
                 roll = (roll + 180) % 360 - 180
 
@@ -131,14 +133,12 @@ class HeadPoseTracker:
 
         all_stable = pitch_stable and yaw_stable and position_stable and roll_stable
 
-
         if all_stable:
             self.is_stable = True
-            self.stability_time+=1
+            self.stability_time += 1
         else:
             self.is_stable = False
             self.stability_time = 0
-
 
         return {
             'stable': self.is_stable,
@@ -149,20 +149,16 @@ class HeadPoseTracker:
             'angles': (pitch, yaw, roll)
         }
 
-    def draw_pose_info(self, image, pose_data, stability_info):
+    def draw_pose_info(self, image, stability_info):
         height, width = image.shape[:2]
 
-
-        pitch, yaw, roll = stability_info['angles']
-
         status_text = ""
-        if stability_info['stable'] and self.stability_time>=6:
+        if stability_info['stable'] and self.stability_time >= 6:
             circle_color = (0, 255, 0)
 
         else:
             circle_color = (0, 0, 255)
             status_text = "ADJUST HEAD POSITION"
-
 
         circle_center = (50, height - 50)
         circle_radius = 20
@@ -170,11 +166,10 @@ class HeadPoseTracker:
 
         cv2.circle(image, circle_center, circle_radius, (255, 255, 255), 2)
 
-        if not stability_info['stable'] or self.stability_time<6:
+        if not stability_info['stable'] or self.stability_time < 6:
             text_position = (circle_center[0] + 40, circle_center[1] + 5)
             cv2.putText(image, status_text, text_position,
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
 
     def process_frame(self, image):
         rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -186,12 +181,7 @@ class HeadPoseTracker:
 
                 stability_info = self.check_stability(pose_data)
 
-                self.draw_pose_info(image, pose_data, stability_info)
-
-                self.mp_drawing.draw_landmarks(image=image, landmark_list=face_landmarks,
-                                               connections=self.mp_face_mesh.FACEMESH_CONTOURS,
-                                               landmark_drawing_spec=None,
-                                               connection_drawing_spec=self.mp_drawing_styles.get_default_face_mesh_contours_style())
+                self.draw_pose_info(image, stability_info)
 
         else:
             cv2.putText(image, "NO FACE DETECTED - MOVE INTO FRAME", (50, 50),
@@ -230,3 +220,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
