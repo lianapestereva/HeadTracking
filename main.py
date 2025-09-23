@@ -34,6 +34,7 @@ class HeadPoseTracker:
         self.dist_coeffs = np.zeros((4, 1))
 
         self.rotation_threshold = 10
+        self.pitch_up_threshold = 4
         self.position_threshold = 15
         self.stability_time = 0
 
@@ -45,6 +46,18 @@ class HeadPoseTracker:
         self.kalman_yaw = 0
         self.kalman_roll = 0
         self.kalman_gain = 0.25
+
+        self.reset_tracking_state()
+
+    def reset_tracking_state(self):
+        self.stability_time = 0
+        self.is_stable = False
+        self.stable_counter = 0
+        self.initial_position = None
+        self.kalman_pitch = 0
+        self.kalman_yaw = 0
+        self.kalman_roll = 0
+
 
     def calculate_head_pose(self, landmarks, image_shape):
         image_points = []
@@ -79,10 +92,9 @@ class HeadPoseTracker:
                 yaw = float(euler_angles[1].item()) if hasattr(euler_angles[1], 'item') else float(euler_angles[1])
                 roll = float(euler_angles[2].item()) if hasattr(euler_angles[2], 'item') else float(euler_angles[2])
 
-                if pitch > 0:
-                    pitch = 180 - pitch
-                else:
-                    pitch = pitch + 180
+
+                if pitch > 0: pitch = -(180 - pitch)
+                else: pitch = pitch + 180
                 yaw = (yaw + 180) % 360 - 180
                 roll = (roll + 180) % 360 - 180
 
@@ -114,7 +126,13 @@ class HeadPoseTracker:
         self.kalman_yaw = self.kalman_yaw + self.kalman_gain * (yaw - self.kalman_yaw)
         self.kalman_roll = self.kalman_roll + self.kalman_gain * (roll - self.kalman_roll)
 
-        pitch_stable = abs(self.kalman_pitch) < self.rotation_threshold
+
+        if self.kalman_pitch < 0:
+            pitch_stable = abs(self.kalman_pitch) < self.pitch_up_threshold
+        else:
+            pitch_stable = abs(self.kalman_pitch) < self.rotation_threshold
+
+
         yaw_stable = abs(self.kalman_yaw) < self.rotation_threshold
         roll_stable = abs(self.kalman_roll) < self.rotation_threshold
 
